@@ -1,6 +1,7 @@
 package net.pardubicebezobalu.scale.camera;
 
 import org.junit.jupiter.api.Test;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Rect;
 import org.opencv.imgcodecs.Imgcodecs;
@@ -47,5 +48,11 @@ class DigitalReaderTest {
     public void test5() {
         Mat img  = Imgcodecs.imread(getClass().getResource("/IMG_20190328_183522.jpg").getFile());
         assertEquals(1216, new DigitalReader().readDigits(img, cropRect));
+    }
+
+    @Test
+    public void testSingleDigit4() {
+        Mat img  = Imgcodecs.imread(getClass().getResource("/digits/4.png").getFile(), Imgcodecs.CV_LOAD_IMAGE_GRAYSCALE);
+        assertEquals(4, new DigitalReader().analyzeOneDigit(img));
     }
 }

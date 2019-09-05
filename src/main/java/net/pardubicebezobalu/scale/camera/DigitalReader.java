@@ -28,7 +28,6 @@ public class DigitalReader {
     }
 
     public int readDigits(Mat img1, Rect cropRect) {
-        if (true) return 255;
         Mat gray = getCroppedGray(img1, cropRect);
 
         int width = gray.cols();
@@ -67,7 +66,8 @@ public class DigitalReader {
         if (goodContours.size()==0) {
             throw new IllegalStateException("No light digits found in image");
         }
-        digits = cropUsingContours(digits, goodContours);
+        Rect onlyDigitsRect=  onlyDigitsRect(digits, goodContours);
+        digits = digits.submat(onlyDigitsRect);
 
         List<MatOfPoint> fourDigits = findContours(digits);
         if (fourDigits.size()!=4) {
@@ -83,49 +83,24 @@ public class DigitalReader {
 
 
         StringBuffer digitsStr = new StringBuffer();
-
+        List<Rect> digitRects = new ArrayList<>();
         for (MatOfPoint fourDigit : fourDigits) {
-            StringBuffer segments = new StringBuffer();
-            Rect digitContour = Imgproc.boundingRect(fourDigit);
+            Rect digitRect = Imgproc.boundingRect(fourDigit);
+            digitRects.add(digitRect);
+        }
+        for (Rect digitRect : digitRects) {
 
-            int w = digitContour.width;
-            int h = digitContour.height;
+            int w = digitRect.width;
+            int h = digitRect.height;
 
             if ((double) h/w >2.8) {
                 digitsStr.append("1");
             } else {
                 //digitContour = new Rect(digitContour.x, digitContour.y, digitContour.width-5, digitContour.height-5);
-                Mat oneDigit = digits.submat(digitContour);
+                Mat oneDigit = digits.submat(digitRect);
 
-                double quaterHeight = (double) h /4;
-                double halfWidth = (double) w /2;
-                double thirdHeight = (double) h /3;
-                Mat topRowLeft = oneDigit.submat(new Rect(new Point(0, (int) quaterHeight), new Point((int) halfWidth, (int) quaterHeight+1)));
-                Mat topRowRight = oneDigit.submat(new Rect(new Point(halfWidth, (int) quaterHeight), new Point((int) w, (int) quaterHeight+1)));
-
-                Mat bottomRowLeft = oneDigit.submat(new Rect(new Point(0, (int) 3*quaterHeight), new Point((int) halfWidth, (int) 3*quaterHeight+1)));
-                Mat bottomRowRight = oneDigit.submat(new Rect(new Point(halfWidth, (int) 3*quaterHeight), new Point((int) w, (int) 3*quaterHeight+1)));
-
-                Mat middleColumnTop = oneDigit.submat(new Rect(new Point(halfWidth, 0), new Point(halfWidth+1, thirdHeight)));
-                Mat middleColumnMiddle = oneDigit.submat(new Rect(new Point(halfWidth, thirdHeight), new Point(halfWidth+1, 2*thirdHeight)));
-                Mat middleColumnBottom = oneDigit.submat(new Rect(new Point(halfWidth, 2*thirdHeight), new Point(halfWidth+1, h)));
-
-                List<Mat> analyzeSegments = new ArrayList<>();
-                analyzeSegments.add(topRowLeft);
-                analyzeSegments.add(topRowRight);
-                analyzeSegments.add(bottomRowLeft);
-                analyzeSegments.add(bottomRowRight);
-                analyzeSegments.add(middleColumnTop);
-                analyzeSegments.add(middleColumnMiddle);
-                analyzeSegments.add(middleColumnBottom);
-
-                for (Mat analyzeSegment : analyzeSegments) {
-                    segments.append(findContours(analyzeSegment).size());
-                }
-                if (!digitMap.containsKey(segments.toString())) {
-                    throw new IllegalStateException("Unmappable digit: " + segments.toString());
-                }
-                digitsStr.append(digitMap.get(segments.toString()));
+                Integer foundDigit = analyzeOneDigit(oneDigit);
+                digitsStr.append(foundDigit);
             }
 
         }
@@ -138,6 +113,45 @@ public class DigitalReader {
 
 
         return integer;
+    }
+
+    public Integer analyzeOneDigit(Mat oneDigit) {
+        StringBuffer segments = new StringBuffer();
+
+        double w = oneDigit.width();
+        double h = oneDigit.height();
+        double quaterHeight = (double) h /4;
+        double halfWidth = w /2;
+        double thirdHeight = (double) h /3;
+
+        double thirdWidth = (0.33) * w;
+
+        Mat topRowLeft = oneDigit.submat(new Rect(new Point(0, (int) quaterHeight), new Point((int) halfWidth, (int) quaterHeight+1)));
+        Mat topRowRight = oneDigit.submat(new Rect(new Point(halfWidth, (int) quaterHeight), new Point((int) w, (int) quaterHeight+1)));
+
+        Mat bottomRowLeft = oneDigit.submat(new Rect(new Point(0, (int) 3*quaterHeight), new Point((int) halfWidth, (int) 3*quaterHeight+1)));
+        Mat bottomRowRight = oneDigit.submat(new Rect(new Point(halfWidth, (int) 3*quaterHeight), new Point((int) w, (int) 3*quaterHeight+1)));
+
+        Mat middleColumnTop = oneDigit.submat(new Rect(new Point(halfWidth, 0), new Point(halfWidth+1, thirdHeight)));
+        Mat middleColumnMiddle = oneDigit.submat(new Rect(new Point(halfWidth, thirdHeight), new Point(halfWidth+1, 2*thirdHeight)));
+        Mat middleColumnBottom = oneDigit.submat(new Rect(new Point(thirdWidth, 2*thirdHeight), new Point(thirdWidth+1, h)));
+
+        List<Mat> analyzeSegments = new ArrayList<>();
+        analyzeSegments.add(topRowLeft);
+        analyzeSegments.add(topRowRight);
+        analyzeSegments.add(bottomRowLeft);
+        analyzeSegments.add(bottomRowRight);
+        analyzeSegments.add(middleColumnTop);
+        analyzeSegments.add(middleColumnMiddle);
+        analyzeSegments.add(middleColumnBottom);
+
+        for (Mat analyzeSegment : analyzeSegments) {
+            segments.append(findContours(analyzeSegment).size());
+        }
+        if (!digitMap.containsKey(segments.toString())) {
+            throw new IllegalStateException("Unmappable digit: " + segments.toString());
+        }
+        return digitMap.get(segments.toString());
     }
 
     private Mat getCroppedGray(Mat img1, Rect cropRect) {
@@ -173,7 +187,7 @@ public class DigitalReader {
         return mats;
     }
 
-    private Mat cropUsingContours(Mat imgToCrop, List<MatOfPoint> contours) {
+    private Rect onlyDigitsRect(Mat imgToCrop, List<MatOfPoint> contours) {
         int minX = Integer.MAX_VALUE, maxX = 0;
         int minY = Integer.MAX_VALUE, maxY = 0;
 
@@ -188,7 +202,7 @@ public class DigitalReader {
             maxY = Math.max(maxY, rect.y+rect.height-1);
         }
         Rect cropRect = new Rect(new Point(minX, minY), new Point(maxX, maxY));
-        return imgToCrop.submat(cropRect);
+        return cropRect;
     }
 
     private List<MatOfPoint> findContours(Mat img) {
@@ -280,5 +294,11 @@ public class DigitalReader {
         );
     }
 
+    public static Point offset(Point p, Rect rect) {
+        return new Point(p.x + rect.x, p.y + rect.y);
+    }
 
+    public static Point add(Point p1, Point p2) {
+        return new Point(p1.x + p2.x, p1.y + p2.y);
+    }
 }

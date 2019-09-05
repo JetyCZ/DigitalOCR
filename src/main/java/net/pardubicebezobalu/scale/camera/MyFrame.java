@@ -1,8 +1,5 @@
 package net.pardubicebezobalu.scale.camera;
 
-import org.opencv.core.Rect;
-import org.opencv.core.Scalar;
-
 import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
@@ -11,6 +8,7 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
 public class MyFrame extends JFrame {
+    private static int cameraIdx;
     private JPanel contentPane;
 
     static int x, y, width, height;
@@ -20,6 +18,7 @@ public class MyFrame extends JFrame {
         y = Integer.parseInt(args[1]);
         width = Integer.parseInt(args[2]);
         height = Integer.parseInt(args[3]);
+        cameraIdx = Integer.parseInt(args[4]);
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
@@ -43,7 +42,7 @@ public class MyFrame extends JFrame {
         new MyThread().start();
     }
 
-    VideoCap videoCap = new VideoCap();
+    VideoCap videoCap = new VideoCap(cameraIdx);
 
     public void paint(Graphics g){
         videoCap.setMyFrame(this);

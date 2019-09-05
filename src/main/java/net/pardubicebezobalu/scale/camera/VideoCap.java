@@ -1,5 +1,6 @@
 package net.pardubicebezobalu.scale.camera;
 
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
@@ -33,16 +34,19 @@ public class VideoCap {
     VideoCapture cap;
     Mat2Image mat2Img = new Mat2Image();
 
-    VideoCap(){
+    VideoCap(int cameraIdx){
         cap = new VideoCapture();
-        cap.open(0);
+        cap.open(cameraIdx);
     }
 
     BufferedImage getOneFrame() {
         Mat frameMat = mat2Img.mat;
         cap.read(frameMat);
 
+        Core.rotate(frameMat, frameMat, Core.ROTATE_90_CLOCKWISE);
         Rect cropRect = new Rect(MyFrame.x, MyFrame.y, MyFrame.width, MyFrame.height);
+        DigitalReader.draw(frameMat, cropRect, new Scalar(0,0,255), 1);
+
         try {
             int digits = digitalReader.readDigits(frameMat, cropRect);
 
@@ -51,15 +55,8 @@ public class VideoCap {
             myFrame.setTitle("Found digits: " + digits + ", server response:" + fromServer);
 
         } catch (Exception e) {
-            try {
-                String fromServer = sendToServer(-1);
-            } catch (IOException e1) {
-                System.out.println("Cannot send to server " + e1.getMessage());
-                System.exit(-1);
-            }
             myFrame.setTitle(e.getMessage());
         }
-        DigitalReader.draw(frameMat, cropRect, new Scalar(0,0,255), 1);
 
         BufferedImage image = mat2Img.getImage(frameMat);
 
@@ -67,9 +64,11 @@ public class VideoCap {
         return image;
     }
 
+    int stableDigitCount = 0;
+    long lastTimeSent = -1;
     private String sendToServer(int digits) throws IOException {
         if (lastSendToServer==digits) {
-            return digits + " not sent";
+                return digits + " not sent";
         }
         lastSendToServer = digits;
         String url = "http://www.pardubicebezobalu.cz/vaha.php?vaha="+digits;
