@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class DigitalReaderTest {
 
     Rect cropRect = new Rect(642, 610, 376, 184);
+    Rect cropRect2 = new Rect(110, 67, 344, 210);
     static {
         VideoCap.initOpenCV();
     }
@@ -51,8 +52,15 @@ class DigitalReaderTest {
     }
 
     @Test
+    public void test6() {
+        Mat img  = Imgcodecs.imread(getClass().getResource("/a257e.png").getFile());
+        assertEquals(260, new DigitalReader().readDigits(img, cropRect2));
+    }
+
+    @Test
     public void testSingleDigit4() {
         Mat img  = Imgcodecs.imread(getClass().getResource("/digits/4.png").getFile(), Imgcodecs.CV_LOAD_IMAGE_GRAYSCALE);
         assertEquals(4, new DigitalReader().analyzeOneDigit(img));
     }
+
 }

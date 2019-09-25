@@ -56,6 +56,11 @@ public class VideoCap {
 
         } catch (Exception e) {
             myFrame.setTitle(e.getMessage());
+            try {
+                sendToServer(-1);
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
         }
 
         BufferedImage image = mat2Img.getImage(frameMat);

@@ -5,7 +5,10 @@ import org.opencv.core.Point;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
+import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
@@ -32,6 +35,8 @@ public class DigitalReader {
 
         int width = gray.cols();
         int height = gray.rows();
+
+        gray = warpDigits(gray);
 
         List<Mat> kmeans = kmeans(width, height, gray);
         gray.release();
@@ -113,6 +118,28 @@ public class DigitalReader {
 
 
         return integer;
+    }
+
+    private Mat warpDigits(Mat digits) {
+        Size size = digits.size();
+
+        int warpShift = 50;
+        MatOfPoint2f src = new MatOfPoint2f(
+                new Point(0+ warpShift,0),
+                new Point(size.width,0),
+                new Point(size.width,size.height),
+                new Point(0,size.height));
+
+        MatOfPoint2f dst = new MatOfPoint2f(
+                new Point(0,0),
+                new Point(size.width,0),
+                new Point(size.width+ warpShift,size.height),
+                new Point(0,size.height));
+
+        Mat warpMat = Imgproc.getPerspectiveTransform(src, dst);
+        Mat destImage = new Mat();
+        Imgproc.warpPerspective(digits, destImage, warpMat, size);
+        return destImage;
     }
 
     public Integer analyzeOneDigit(Mat oneDigit) {
@@ -273,12 +300,46 @@ public class DigitalReader {
         try {
             String tempImgFile = "/tmp/a" + UUID.randomUUID().toString().substring(0,4) + ".png";
             Imgcodecs.imwrite(tempImgFile, img);
-            Runtime.getRuntime().exec("firefox "
+            /*BufferedImage bufferedImg = ImageIO.read(new File(tempImgFile));
+            displayImage(bufferedImg);*/
+            Runtime.getRuntime().exec("google-chrome "
                     + tempImgFile);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
     }
+
+
+    public static void displayImage(Image img2) {
+
+        ImageIcon icon=new ImageIcon(img2);
+        JFrame frame=new JFrame();
+        frame.setLayout(new FlowLayout());
+        frame.setSize(img2.getWidth(null)+50, img2.getHeight(null)+50);
+        JLabel lbl=new JLabel();
+        lbl.setIcon(icon);
+        frame.add(lbl);
+        frame.setVisible(true);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    }
+
+    public BufferedImage Mat2BufferedImage(Mat m) {
+        // Fastest code
+        // output can be assigned either to a BufferedImage or to an Image
+
+        int type = BufferedImage.TYPE_BYTE_GRAY;
+        if ( m.channels() > 1 ) {
+            type = BufferedImage.TYPE_3BYTE_BGR;
+        }
+        int bufferSize = m.channels()*m.cols()*m.rows();
+        byte [] b = new byte[bufferSize];
+        m.get(0,0,b); // get all the pixels
+        BufferedImage image = new BufferedImage(m.cols(),m.rows(), type);
+        final byte[] targetPixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+        System.arraycopy(b, 0, targetPixels, 0, b.length);
+        return image;
+    }
+
 
     public static void drawContour(Mat img, MatOfPoint contour, Color color, int thickness) {
         Imgproc.drawContours(img, Collections.singletonList(contour), 0, new Scalar(color.getBlue(), color.getGreen(), color.getRed()),thickness);
